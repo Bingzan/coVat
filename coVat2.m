@@ -2,9 +2,9 @@ function [mRearrangedOrig1, mRearrangedOrig2, vPermR, vPermR1, vPermR2, vPermC1,
 %coVat2 Visualise each dimension according to the factor alpha
 %
 % @author: Bingzan Liang
-% Last update: 25/03/2014
+% Last update: 1/05/2014
 %
-    [mOrig1, mOrig2] = getData(); %termDoc, termSeg
+    [mOrig1, mOrig2] = getData(201,-0.01); %termDoc, termSeg
 
     row1 = size(mOrig1,1);
     column1 = size(mOrig1,2);
@@ -77,17 +77,19 @@ function [mRearrangedOrig1, mRearrangedOrig2, vPermR, vPermR1, vPermR2, vPermC1,
             mRearrangedOrig1(i,j) = mOrig1(vPermR(i),vPermC1(j));
         end
     end
+    mRearrangedOrig1 = sparse(mRearrangedOrig1);
     
     for i=1:row2
         for j=1:column2
             mRearrangedOrig2(i,j) = mOrig2(vPermR(i),vPermC2(j));
         end
     end
+    %mRearrangedOrig2 = sparse(mRearrangedOrig2);
     
     if bVisualise
        vatFigure = figure;
        colormap(gray);
-       subplot 121, imagesc(mRearrangedOrig1);
+       subplot 121, spy(mRearrangedOrig1);
        subplot 122, imagesc(mRearrangedOrig2);
        saveas(vatFigure,figureName,'fig');
     end
