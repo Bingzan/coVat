@@ -15,6 +15,9 @@ function [cmAdjMat, vVertPos, cmImageGraph, cmShuffledAdjMat, vShuffledVertPos] 
 % @author Jeffrey Chan
 % @Date 1/2013
 %
+% Modified by: Bingzan Liang
+% Last update: 8/5/2014
+%
 % sPosDist - probability distribution of the sizes of each position/role
 % posNum - number of roles to generate
 % graphSize - number of vertices in the graph generated
@@ -303,7 +306,18 @@ function [cmImageGraph] = genImageGraph(cmImageGraphPlanted, cmImageGraphBackgro
         for b = 1 : length(vBackgroundProp)
             backgroundProp = vBackgroundProp(b);
             cmImageGraph{b,m} = (1-backgroundProp) * cmImageGraphPlanted{m} + backgroundProp * cmImageGraphBackground{m};
-            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            for p = 1:size(cmImageGraph{b,m},1)
+                for q = 1:size(cmImageGraph{b,m},2)
+                    if cmImageGraph{b,m}(p,q) >= 1.0
+                        cmImageGraph{b,m}(p,q) = 1.0;
+                    end
+                    if cmImageGraph{b,m}(p,q) <= 0
+                        cmImageGraph{b,m}(p,q) = 0;
+                    end
+                end
+            end
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         end
     end
  
