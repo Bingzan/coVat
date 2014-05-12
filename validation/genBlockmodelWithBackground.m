@@ -1,5 +1,5 @@
 function [cmAdjMat, vVertPos, cmImageGraph, cmShuffledAdjMat, vShuffledVertPos] =...
-        genBlockmodelWithBackground(sPosDist, posNum, graphSize, bShuffle, vBackgroundProp, sBlockmodelType,...
+        genBlockmodelWithBackground_test(sPosDist, posNum, numRow, numColumn, unitGraphSize, bShuffle, vBackgroundProp, sBlockmodelType,...
             varargin)
 %
 % Generate blockmodels, using a stocastic blockmodel (generative) model.
@@ -16,23 +16,22 @@ function [cmAdjMat, vVertPos, cmImageGraph, cmShuffledAdjMat, vShuffledVertPos] 
 % @Date 1/2013
 %
 % Modified by: Bingzan Liang
-% Last update: 8/5/2014
+% Last update: 12/5/2014
 %
+% Usage: genNewmanBlockmodel(sRoleDist, roleNum, graphSize, sDegDist, degPara, backgroundProp, sBlockmodelType, bShuffle)
+%
+% Input:
 % sPosDist - probability distribution of the sizes of each position/role
 % posNum - number of roles to generate
 % graphSize - number of vertices in the graph generated
 % bShuffle - whether to shuffle the generated adjacency matrix
-% vBackgroundProp - vector of background portions to generate for each generated
-% graph
-% sBlockmodelType - the type of blockmodel to generate (community,
-% corePeriphery, hierarchy, bipartite, random).
+% vBackgroundProp - vector of background portions to generate for each generated graph
+% sBlockmodelType - the type of blockmodel to generate (community, corePeriphery, hierarchy, bipartite, random).
 %
-% Optional:
+% Output:
 % mImageGraph - image matrix, each entry being 0-1, specifying the
-% probability (i.e., the density of each block) of an edge existing.  The
-% mImageGraph must be a square matrix and the number of rows (columns) =
-% size(vRoleProb,2).
-%
+%   probability (i.e., the density of each block) of an edge existing.  The
+%   mImageGraph must be a square matrix and the number of rows (columns) = size(vRoleProb,2).
 % mAdjMat - (unshuffled) generated adajency matrix.
 % vVertRole - mapping of vertices to roles.
 % mShuffledAdjMat - shuffled adajency matrix.
@@ -42,12 +41,13 @@ function [cmAdjMat, vVertPos, cmImageGraph, cmShuffledAdjMat, vShuffledVertPos] 
     %mystream = RandStream('mt19937ar','Seed',sum(100*clock));
     %RandStream.setGlobalStream(mystream);
 
+    graphSize = max(numRow*unitGraphSize, numColumn*unitGraphSize);
     optargin = size(varargin,2);
     stdargin = nargin - optargin;
 
-    if stdargin < 5
+    if stdargin < 8
         disp(' genBlockmodelWithBackground(vRoleProb, graphSize, bShuffle, backgroundProp, sBlockmodelType, varargin)');
-        exit;
+        %exit;
     end
 
     currIndex = 1;
@@ -72,7 +72,7 @@ function [cmAdjMat, vVertPos, cmImageGraph, cmShuffledAdjMat, vShuffledVertPos] 
             currIndex = currIndex + 1;
         end
         currIndex = currIndex + 2;
-        cmImageGraphPlanted = genImageGraphPlanted(sBlockmodelType, posNum, vMeanDense, vVarDense, 0.0, 0.0, cOptional);
+        cmImageGraphPlanted = genImageGraphPlanted(sBlockmodelType, posNum,numRow, numColumn, vMeanDense, vVarDense, 0.0, 0.0, cOptional);
         
         % more command line arguments
         if optargin >= currIndex
@@ -87,22 +87,23 @@ function [cmAdjMat, vVertPos, cmImageGraph, cmShuffledAdjMat, vShuffledVertPos] 
 
 
     % generate role sizes
-    [vPosNum, vVertPos] = genPositionMembership(sPosDist, posNum, graphSize);
+    [vPosNumRow, vPosNumColumn, vVertPos] = genPositionMembership(sPosDist, posNum, numRow, numColumn, unitGraphSize);
 
-    assert(size(vPosNum,2) == size(cmImageGraphPlanted{1},2));
-    assert(size(cmImageGraphPlanted{1},1) == size(cmImageGraphPlanted{1},2));
+    assert(size(vPosNumRow,2) == size(cmImageGraphPlanted{1},1));
+    assert(size(vPosNumColumn,2) == size(cmImageGraphPlanted{1},2));
+    %assert(size(cmImageGraphPlanted{1},1) == size(cmImageGraphPlanted{1},2)); % square matrix
 
 
 
 
     % generate background image graph
-    cmImageGraphBackground = genBackgroundImage(cmImageGraphPlanted, vPosNum, graphSize);
+    cmImageGraphBackground = genBackgroundImage(cmImageGraphPlanted, vPosNumRow, vPosNumColumn, numRow, numColumn, unitGraphSize);
 
     % compute mImageGraph
     cmImageGraph = genImageGraph(cmImageGraphPlanted, cmImageGraphBackground, vBackgroundProp);
    
     % generate the graph
-    cmAdjMat = genGraph(vPosNum, cmImageGraph, graphSize);
+    cmAdjMat = genGraph(vPosNumRow, vPosNumColumn, cmImageGraph, numRow, numColumn, unitGraphSize);
     
     
     [vShuffledVertPos, cmShuffledAdjMat] = shuffle(bShuffle, vVertPos, cmAdjMat, graphSize);
@@ -132,7 +133,7 @@ end % end of function
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-function [cmImageGraphPlanted] = genImageGraphPlanted(sBlockmodelType, posNum, vMeanDense, vStdDense, meanSparse, stdSparse, vOptional)
+function [cmImageGraphPlanted] = genImageGraphPlanted(sBlockmodelType, posNum, numRow, numColumn, vMeanDense, vStdDense, meanSparse, stdSparse, vOptional)
 %
 % Generate image matrix.  Each block is either dense or sparse, depending
 % on probDense (1 - probDense) respectively.  The density of each block is
@@ -197,8 +198,9 @@ function [cmImageGraphPlanted] = genImageGraphPlanted(sBlockmodelType, posNum, v
                 mDense(p, p+1) = true;
             end
             
-            mImageGraphPlanted = genBlocks(mDense, vMeanDense, vStdDense, meanSparse, stdSparse);
+            cmImageGraphPlanted = genBlocks(mDense, vMeanDense, vStdDense, meanSparse, stdSparse);
         case 'upHierarchy'
+            probDense = vOptional(1);
             [cmImageGraphPlanted] = genImageGraphPlanted('downHierarchy', probDense, posNum, meanDense, stdDense, meanSparse, stdSparse);
             % upHierarchy is the tranpose of downHierarchy
             for m = 1 : size(cmImageGraphPlanted,2)
@@ -206,8 +208,8 @@ function [cmImageGraphPlanted] = genImageGraphPlanted(sBlockmodelType, posNum, v
             end
         case 'random'
             probDense = vOptional(1);
-            % generate dense blocks accounding to rand and probDense
-            mDense = logical(rand(posNum, posNum) < probDense);
+            % generate dense blocks according to rand and probDense
+            mDense = logical(rand(numRow, numColumn) < probDense);
             cmImageGraphPlanted = genBlocks(mDense, vMeanDense, vStdDense, meanSparse, stdSparse);
 %             for r = 1 : posNum
 %                 for c = 1 : posNum
@@ -246,7 +248,9 @@ function cmImageGraphPlanted = genBlocks(mDense, vMeanDense, vStdDense, meanSpar
             for r = 1 : size(mDense,1)
                 if mDense(r,c)
                     density = normrnd(vMeanDense(m), vStdDense(m));
-                    if density >= 1.0, density = 1.0; end
+                    if density >= 1.0
+                        density = 1.0; 
+                    end
                     mImageGraphPlanted(r,c) = density;
                 else
                     density = normrnd(meanSparse, stdSparse);
@@ -256,19 +260,20 @@ function cmImageGraphPlanted = genBlocks(mDense, vMeanDense, vStdDense, meanSpar
             end
         end
     
-        cmImageGraphPlanted{m} = mImageGraphPlanted;
+        cmImageGraphPlanted{m} = mImageGraphPlanted; % cell of matrixes
     end
     
 end
 
 
 
-function [cmBackImageMatrix] = genBackgroundImage(cmImageGraphPlanted, vPosNum, graphSize)
+function [cmBackImageMatrix] = genBackgroundImage(cmImageGraphPlanted, vPosNumRow, vPosNumColumn, numRow, numColumn, unitGraphSize)
     %
     % Generate the background image matrix.
     %
     
-    posNum = size(cmImageGraphPlanted{1}, 1);
+    posNum = numRow;
+    graphSize = max(numRow*unitGraphSize, numColumn*unitGraphSize);
     
     cmBackImageMatrix = cell(1, size(cmImageGraphPlanted,2));
     
@@ -276,16 +281,16 @@ function [cmBackImageMatrix] = genBackgroundImage(cmImageGraphPlanted, vPosNum, 
     % role/position assignments
     for m = 1 : size(cmImageGraphPlanted,2)
         totalEdge = 0;
-        for r = 1 : posNum
-            for c = 1 : posNum
-                totalEdge = totalEdge + vPosNum(r) * vPosNum(c) * cmImageGraphPlanted{m}(r,c);
+        for r = 1 : posNum %numRow
+            for c = 1 : numColumn
+                totalEdge = totalEdge + vPosNumRow(r) * vPosNumColumn(c) * cmImageGraphPlanted{m}(r,c);
             end
         end
         
         % use the total expected edge to obtain the expected edge probability assuming
         % same change of edge
         edgeProb = totalEdge / (graphSize * graphSize);   
-        cmBackImageMatrix{m} = ones(posNum, posNum) * edgeProb;
+        cmBackImageMatrix{m} = ones(numRow, numColumn) * edgeProb;
     end
 
 end
@@ -327,21 +332,24 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
 
 
-function [vPosNum, vVertPos] = genPositionMembership(sPosDist, posNum, graphSize)
+function [vPosNumRow, vPosNumColumn, vVertPos] = genPositionMembership(sPosDist, posNum, numRow, numColumn, unitGraphSize)
 %
 % Generate the sizes of each position, based on the distribution specified in
 % sPosDist.
 %
-
+    graphSize = max(numRow*unitGraphSize, numColumn*unitGraphSize);
     switch sPosDist
         case 'uniform'
-            vRoleProb = zeros(1,posNum) + 1/posNum;
+            vRoleProbRow = zeros(1,numRow) + 1/numRow;
+            vRoleProbColumn = zeros(1, numColumn) + 1/numColumn;
         case 'linear'
-            vRoleProb = [posNum:-1:1]/sum([1:1:posNum]);
+            vRoleProbRow = [numRow:-1:1]/sum([1:1:numRow]);
+            vRoleProbColumn = [numColumn:-1:1]/sum([1:1:numColumn]);
         case 'random'
             % generate a random sizes that sum up to graphsize, then we divide by
             % graphsize
-            vRoleProb = (randfixedsum(posNum, 1, graphSize, 1, graphSize))' / graphSize;
+            vRoleProbRow = (randfixedsum(posNum, 1, graphSize, 1, graphSize))' / graphSize;
+            vRoleProbColumn = (randfixedsum(numColumn, 1, graphSize, 1, graphSize))' / graphSize;
         otherwise
             disp(usage());
             err = MException('genPositionSize:InvalidPositoinDistribution', 'Invalid role distribution specified.');
@@ -349,31 +357,40 @@ function [vPosNum, vVertPos] = genPositionMembership(sPosDist, posNum, graphSize
     end
     
     % generate membership of the vertices
-    vPosNum = mnrnd(graphSize, vRoleProb);    
+    vPosNumRow = mnrnd(numRow*unitGraphSize, vRoleProbRow); 
+    vPosNumColumn = mnrnd(numColumn*unitGraphSize, vRoleProbColumn);
     
     % if there are any zero elements, we random sample one of partitions that
     % has more than one element and move an element to each zero element
     % partition
-    vZeroSizedRoles = find(vPosNum == 0);
-    for zeroi = 1 : size(vZeroSizedRoles,2)
-        vNZSizedRoles = find(vPosNum > 1);
-        nzChosen = randsample(vNZSizedRoles, 1);   
-        vPosNum(nzChosen) = vPosNum(nzChosen) - 1;
-        vPosNum(vZeroSizedRoles(zeroi)) = vPosNum(vZeroSizedRoles(zeroi)) + 1;
+    vZeroSizedRolesRow = find(vPosNumRow == 0);
+    for zeroi = 1 : size(vZeroSizedRolesRow,2)
+        vNZSizedRolesRow = find(vPosNumRow > 1);
+        nzChosen = randsample(vNZSizedRolesRow, 1);   
+        vPosNumRow(nzChosen) = vPosNumRow(nzChosen) - 1;
+        vPosNumRow(vZeroSizedRolesRow(zeroi)) = vPosNumRow(vZeroSizedRolesRow(zeroi)) + 1;
+    end
+    vZeroSizedRolesColumn = find(vPosNumColumn == 0);
+    for zeroi = 1 : size(vZeroSizedRolesColumn,2)
+        vNZSizedRolesColumn = find(vPosNumColumn > 1);
+        nzChosen = randsample(vNZSizedRolesColumn, 1);   
+        vPosNumColumn(nzChosen) = vPosNumColumn(nzChosen) - 1;
+        vPosNumColumn(vZeroSizedRolesColumn(zeroi)) = vPosNumColumn(vZeroSizedRolesColumn(zeroi)) + 1;
     end
 
     % make sure all roles have at least one element
-    assert(isempty(find(vPosNum == 0,1)));    
+    assert(isempty(find(vPosNumRow == 0,1)));  
+    assert(isempty(find(vPosNumColumn == 0,1)));    
    
     
     % generate vertex to role mapping
     vVertPos = zeros(1, graphSize);
  
     vertIndex = 1;
-    for i = 1 : size(vPosNum,2)
+    for i = 1 : size(vPosNumColumn,2)
         % assign vertex, in order, to each role, based on the numbers from
         % vPosNum
-        for j = 1 : vPosNum(i)
+        for j = 1 : vPosNumColumn(i)
             vVertPos(vertIndex) = i;
             vertIndex = vertIndex + 1;
         end
@@ -385,7 +402,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-function cmAdjMat = genGraph(vPosNum, cmImageGraph, graphSize)
+function cmAdjMat = genGraph(vPosNumRow, vPosNumColumn, cmImageGraph, numRow, numColumn, unitGraphSize)
 %
 % Generates an adjacency matrix accounting to the postion assignments and given
 % image matrix.
@@ -402,26 +419,26 @@ function cmAdjMat = genGraph(vPosNum, cmImageGraph, graphSize)
     for m = 1 : graphNum
         for b = 1 : size(cmImageGraph,1)
     
-            mAdjMat = zeros(graphSize, graphSize);
+            mAdjMat = zeros(numRow*unitGraphSize, numColumn*unitGraphSize); %rectangular
             currRowShift = 1;
             currColShift = 1;
 
             % from block generate the number of edges (binomial(p,n), p = density of
             % block/probability of an edge, n = number of elements in the block)
             for r = 1 : posNum
-                for c = 1 : posNum
-                    edgeNum = binornd(vPosNum(r) * vPosNum(c), cmImageGraph{b,m}(r,c));
-                    vEdges = randsample(vPosNum(r) * vPosNum(c), edgeNum);
+                for c = 1 : numColumn
+                    edgeNum = binornd(vPosNumRow(r) * vPosNumColumn(c), cmImageGraph{b,m}(r,c)); %a number, like 25752
+                    vEdges = randsample(vPosNumRow(r) * vPosNumColumn(c), edgeNum); %(edgeNum * 1) like 36754
                     for e = 1 : size(vEdges,1)
-                        row = floor((vEdges(e) - 1) / vPosNum(c));
-                        col = floor(mod((vEdges(e)-1), vPosNum(c)));
+                        row = floor((vEdges(e) - 1) / vPosNumRow(r));
+                        col = floor(mod((vEdges(e)-1), vPosNumColumn(c)));
                         mAdjMat(currRowShift + row, currColShift + col) = edgeVal;
                     end
         
-                    currColShift = currColShift + vPosNum(c);
+                    currColShift = currColShift + vPosNumColumn(c);
                 end
     
-                currRowShift = currRowShift + vPosNum(r);
+                currRowShift = currRowShift + vPosNumRow(r)-1;
                 currColShift = 1;
             end
         
