@@ -1,5 +1,5 @@
 function [cmAdjMat, vVertPos, cmImageGraph, cmShuffledAdjMat, vShuffledVertPos] =...
-        genBlockmodelWithBackground_test(sPosDist, posNum, numRow, numColumn, unitGraphSize, bShuffle, vBackgroundProp, sBlockmodelType,...
+        genBlockmodelWithBackground_rec(sPosDist, posNum, numRow, numColumn, unitGraphSize, bShuffle, vBackgroundProp, sBlockmodelType,...
             varargin)
 %
 % Generate blockmodels, using a stocastic blockmodel (generative) model.
@@ -16,14 +16,14 @@ function [cmAdjMat, vVertPos, cmImageGraph, cmShuffledAdjMat, vShuffledVertPos] 
 % @Date 1/2013
 %
 % Modified by: Bingzan Liang
-% Last update: 12/5/2014
-%
-% Usage: genNewmanBlockmodel(sRoleDist, roleNum, graphSize, sDegDist, degPara, backgroundProp, sBlockmodelType, bShuffle)
+% Last update: 13/5/2014
 %
 % Input:
 % sPosDist - probability distribution of the sizes of each position/role
 % posNum - number of roles to generate
-% graphSize - number of vertices in the graph generated
+% numRow - number of row blocks (should be the same with posNumb)
+% numColumn - number of column blocks
+% unitGraphSize - unit number of points in each block
 % bShuffle - whether to shuffle the generated adjacency matrix
 % vBackgroundProp - vector of background portions to generate for each generated graph
 % sBlockmodelType - the type of blockmodel to generate (community, corePeriphery, hierarchy, bipartite, random).
@@ -38,15 +38,15 @@ function [cmAdjMat, vVertPos, cmImageGraph, cmShuffledAdjMat, vShuffledVertPos] 
 % vShuffledVertRole - shuffled vertices to roles mapping.
 %
 
-    %mystream = RandStream('mt19937ar','Seed',sum(100*clock));
-    %RandStream.setGlobalStream(mystream);
+    mystream = RandStream('mt19937ar','Seed',sum(100*clock));
+    RandStream.setGlobalStream(mystream);
 
-    graphSize = max(numRow*unitGraphSize, numColumn*unitGraphSize);
+    %graphSize = max(numRow*unitGraphSize, numColumn*unitGraphSize);
     optargin = size(varargin,2);
     stdargin = nargin - optargin;
 
     if stdargin < 8
-        disp(' genBlockmodelWithBackground(vRoleProb, graphSize, bShuffle, backgroundProp, sBlockmodelType, varargin)');
+        disp(' genBlockmodelWithBackground_rec(sPosDist, posNum, numRow, numColumn, unitGraphSize, bShuffle, vBackgroundProp, sBlockmodelType, varargin)');
         %exit;
     end
 
@@ -106,7 +106,7 @@ function [cmAdjMat, vVertPos, cmImageGraph, cmShuffledAdjMat, vShuffledVertPos] 
     cmAdjMat = genGraph(vPosNumRow, vPosNumColumn, cmImageGraph, numRow, numColumn, unitGraphSize);
     
     
-    [vShuffledVertPos, cmShuffledAdjMat] = shuffle(bShuffle, vVertPos, cmAdjMat, graphSize);
+    [vShuffledVertPos, cmShuffledAdjMat] = shuffle(bShuffle, vVertPos, cmAdjMat, numRow, numColumn, unitGraphSize);
     
 
     % if file output, we assume it is a script and function will be terminated
@@ -438,7 +438,7 @@ function cmAdjMat = genGraph(vPosNumRow, vPosNumColumn, cmImageGraph, numRow, nu
                     currColShift = currColShift + vPosNumColumn(c);
                 end
     
-                currRowShift = currRowShift + vPosNumRow(r)-1;
+                currRowShift = currRowShift + vPosNumRow(r);
                 currColShift = 1;
             end
         
@@ -451,7 +451,7 @@ end
 
 
 
-function [vShuffledVertPos, cmShuffledAdjMat] = shuffle(bShuffle, vVertPos, cmAdjMat, graphSize)
+function [vShuffledVertPos, cmShuffledAdjMat] = shuffle(bShuffle, vVertPos, cmAdjMat, numRow, numColumn, unitGraphSize)
 %
 % Shuffles the matrices.  The same permutations are applied to all the graphs.
 %
@@ -463,18 +463,21 @@ function [vShuffledVertPos, cmShuffledAdjMat] = shuffle(bShuffle, vVertPos, cmAd
     vShuffledVertPos = vVertPos;
     cmShuffledAdjMat = cmAdjMat;
     graphNum = size(cmAdjMat,2);
+    rowSize = numRow*unitGraphSize;
+    columnSize = numColumn*unitGraphSize;
     
     if bShuffle
         for s = 1 : shuffleNum
-            vShuffle = randperm(graphSize);
+            vShuffleRow = randperm(rowSize);
+            vShuffleColumn = randperm(columnSize);
             % shuffle adjacency matrix
             for m = 1 : graphNum
                 for b = 1 : size(cmAdjMat,1)
-                    cmShuffledAdjMat{b,m} = cmShuffledAdjMat{b,m}(vShuffle, vShuffle);
+                    cmShuffledAdjMat{b,m} = cmShuffledAdjMat{b,m}(vShuffleRow, vShuffleColumn);
                 end
             end
             % shuffle mapping
-            vShuffledVertPos = vShuffledVertPos(vShuffle);
+            vShuffledVertPos = vShuffledVertPos(vShuffleColumn);
         end
     end
 
@@ -488,5 +491,5 @@ function sUsage = usage()
 %
 % Returns the usage string.
 %
-    sUsage = 'Usage: genNewmanBlockmodel(sRoleDist, roleNum, graphSize, sDegDist, degPara, backgroundProp, sBlockmodelType, bShuffle)';
+    sUsage = 'Usage: genBlockmodelWithBackground_rec(sPosDist, posNum, numRow, numColumn, unitGraphSize, bShuffle, vBackgroundProp, sBlockmodelType,varargin)';
 end
