@@ -16,7 +16,7 @@ function [cmAdjMat, vVertPos, cmImageGraph, cmShuffledAdjMat, vShuffledVertPos] 
 % @Date 1/2013
 %
 % Modified by: Bingzan Liang
-% Last update: 13/5/2014
+% Last update: 14/5/2014
 %
 % Input:
 % sPosDist - probability distribution of the sizes of each position/role
@@ -387,10 +387,10 @@ function [vPosNumRow, vPosNumColumn, vVertPos] = genPositionMembership(sPosDist,
     vVertPos = zeros(1, graphSize);
  
     vertIndex = 1;
-    for i = 1 : size(vPosNumColumn,2)
+    for i = 1 : size(vPosNumRow,2)
         % assign vertex, in order, to each role, based on the numbers from
         % vPosNum
-        for j = 1 : vPosNumColumn(i)
+        for j = 1 : vPosNumRow(i)
             vVertPos(vertIndex) = i;
             vertIndex = vertIndex + 1;
         end
@@ -430,7 +430,7 @@ function cmAdjMat = genGraph(vPosNumRow, vPosNumColumn, cmImageGraph, numRow, nu
                     edgeNum = binornd(vPosNumRow(r) * vPosNumColumn(c), cmImageGraph{b,m}(r,c)); %a number, like 25752
                     vEdges = randsample(vPosNumRow(r) * vPosNumColumn(c), edgeNum); %(edgeNum * 1) like 36754
                     for e = 1 : size(vEdges,1)
-                        row = floor((vEdges(e) - 1) / vPosNumRow(r));
+                        row = floor((vEdges(e) - 1) / vPosNumColumn(c));
                         col = floor(mod((vEdges(e)-1), vPosNumColumn(c)));
                         mAdjMat(currRowShift + row, currColShift + col) = edgeVal;
                     end
