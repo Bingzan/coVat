@@ -1,26 +1,27 @@
-function [ mNewMatrix ] = densify( mRearranged,sizeAdd,incremental )
-%densify Density the sparse matrix
+function [ mNewMatrix ] = densify( mRearranged,sizeAddRow,sizeAddColumn,incremental )
+%DENSIFY Dense the sparse matrix
 %
-%input: 
-%sizeAdd: the size of the densify matrix
+%Input:
+%sizeAdd: the size of the density matrix (better to be an odd number)
 %incremental: the incremental factor
 %
-%output;
-%mNewMatrix: the new matrix being densified
+%Output:
+%mNewMatrix: the new matirx being densified
 %
 % @author: Bingzan Liang
-% Last updated: 2/5/2014
+% Last update: 2/05/2014
 
     mNewMatrix = mRearranged;
     row = size(mNewMatrix,1);
     column = size(mNewMatrix,2);
-    half = (sizeAdd-1)/2;
+    halfRow = (sizeAddRow-1)/2;
+    halfColumn = (sizeAddColumn-1)/2;
     [x,y,~] = find(mNewMatrix);
     for i=1:length(x)
-        x1 = x(i) - half;
-        x2 = x(i) + half;
-        y1 = y(i) - half;
-        y2 = y(i) + half;
+        x1 = x(i) - halfRow;
+        x2 = x(i) + halfRow;
+        y1 = y(i) - halfColumn;
+        y2 = y(i) + halfColumn;
                 
         if (x1 <= 0 && x2 <= row && y1 <= 0 && y2 <= column)
             x1 = 1;
